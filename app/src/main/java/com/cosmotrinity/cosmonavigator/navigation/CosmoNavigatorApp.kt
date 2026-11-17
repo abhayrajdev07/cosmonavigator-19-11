@@ -3,14 +3,10 @@ package com.cosmotrinity.cosmonavigator.navigation
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,18 +15,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.sp
 
 import com.cosmotrinity.cosmonavigator.data.CosmoDatabase
 import com.cosmotrinity.cosmonavigator.data.DataStoreManager
 import com.cosmotrinity.cosmonavigator.data.DailyHistoryRepository
 import com.cosmotrinity.cosmonavigator.data.DailyTimetableRepository
+import com.cosmotrinity.cosmonavigator.data.DailySleepRecordRepository
 import com.cosmotrinity.cosmonavigator.data.UpscLectureRepository
 import com.cosmotrinity.cosmonavigator.data.UpscSubjectRepository
+import com.cosmotrinity.cosmonavigator.data.VaultResourceRepository
+import com.cosmotrinity.cosmonavigator.data.VaultFileManager
+
 import com.cosmotrinity.cosmonavigator.ui.calendar.CalendarScreen
 import com.cosmotrinity.cosmonavigator.ui.components.CosmoBottomBar
 import com.cosmotrinity.cosmonavigator.ui.dashboard.DashboardScreen
@@ -38,8 +36,7 @@ import com.cosmotrinity.cosmonavigator.ui.more.MoreScreen
 import com.cosmotrinity.cosmonavigator.ui.more.ProfileScreen
 import com.cosmotrinity.cosmonavigator.ui.planner.PlannerScreen
 import com.cosmotrinity.cosmonavigator.ui.planner.StudyTaskViewModelFactory
-import com.cosmotrinity.cosmonavigator.data.DailySleepRecordRepository
-import com.cosmotrinity.cosmonavigator.ui.progress.ProgressScreen
+import com.cosmotrinity.cosmonavigator.ui.vault.VaultScreen
 
 private const val SWIPE_THRESHOLD = 100f
 
@@ -89,6 +86,18 @@ fun CosmoNavigatorApp(
         DailySleepRecordRepository(
             dao = database.dailySleepRecordDao()
         )
+    }
+
+    // COSMOVault RESOURCE REPOSITORY
+    val vaultResourceRepository = remember(database) {
+        VaultResourceRepository(
+            dao = database.vaultResourceDao()
+        )
+    }
+
+    // COSMOVault FILE MANAGER
+    val vaultFileManager = remember(context) {
+        VaultFileManager(context)
     }
 
     // CAPTURE TODAY'S HISTORY WHEN THE APP OPENS
@@ -144,7 +153,6 @@ fun CosmoNavigatorApp(
                             dragAmount += drag
                         },
                         onDragEnd = {
-
                             if (!showProfile) {
 
                                 val index = destinations.indexOf(
@@ -196,6 +204,8 @@ fun CosmoNavigatorApp(
                     timetableRepository = timetableRepository,
                     dailyHistoryRepository = dailyHistoryRepository,
                     sleepRecordRepository = sleepRecordRepository,
+                    vaultResourceRepository = vaultResourceRepository,
+                    vaultFileManager = vaultFileManager,
                     onProfileClick = {
                         showProfile = true
                     }
@@ -215,6 +225,8 @@ private fun DestinationContent(
     timetableRepository: DailyTimetableRepository,
     dailyHistoryRepository: DailyHistoryRepository,
     sleepRecordRepository: DailySleepRecordRepository,
+    vaultResourceRepository: VaultResourceRepository,
+    vaultFileManager: VaultFileManager,
     onProfileClick: () -> Unit
 ) {
 
@@ -244,25 +256,20 @@ private fun DestinationContent(
             )
         }
 
-
+        AppDestination.VAULT -> {
+            VaultScreen(
+                dataStore = dataStore,
+                subjectRepository = subjectRepository,
+                resourceRepository = vaultResourceRepository,
+                fileManager = vaultFileManager
+            )
+        }
 
         AppDestination.MORE -> {
             MoreScreen(
                 dataStore = dataStore,
                 onProfileClick = onProfileClick
             )
-        }
-
-        AppDestination.PROGRESS -> {
-            ProgressScreen(
-                dataStore = dataStore,
-                subjectRepository = subjectRepository,
-                lectureRepository = lectureRepository
-            )
-        }
-
-        else -> {
-            // Keep your existing fallback here.
         }
     }
 }

@@ -19,9 +19,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         DailyStudySessionEntity::class,
         DailyHistoryEntity::class,
         DailyHistoryActivityEntity::class,
-        DailySleepRecordEntity::class
+        DailySleepRecordEntity::class,
+
+        // COSMOVault
+        VaultResourceEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class CosmoDatabase : RoomDatabase() {
@@ -37,6 +40,9 @@ abstract class CosmoDatabase : RoomDatabase() {
     abstract fun dailyHistoryDao(): DailyHistoryDao
 
     abstract fun dailySleepRecordDao(): DailySleepRecordDao
+
+    // COSMOVault DAO
+    abstract fun vaultResourceDao(): VaultResourceDao
 
     companion object {
 
@@ -365,6 +371,56 @@ abstract class CosmoDatabase : RoomDatabase() {
             }
         }
 
+        // VERSION 8 -> 9
+        // Adds CosmoVault resource metadata storage.
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `vault_resources` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `targetExamYear` INTEGER NOT NULL,
+                        `subjectId` INTEGER NOT NULL,
+                        `category` TEXT NOT NULL,
+                        `subjectName` TEXT NOT NULL,
+                        `folderName` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `originalFileName` TEXT NOT NULL,
+                        `storedFileName` TEXT NOT NULL,
+                        `mimeType` TEXT NOT NULL,
+                        `relativePath` TEXT NOT NULL,
+                        `resourceType` TEXT NOT NULL,
+                        `fileSizeBytes` INTEGER NOT NULL,
+                        `isFavorite` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS
+                    `index_vault_resources_location`
+                    ON `vault_resources`
+                    (`targetExamYear`, `category`, `subjectId`, `folderName`)
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS
+                    `index_vault_resources_title`
+                    ON `vault_resources`
+                    (`targetExamYear`, `title`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        // DATABASE INITIALIZATION
         fun getDatabase(context: Context): CosmoDatabase {
 
             return INSTANCE ?: synchronized(this) {
@@ -381,7 +437,8 @@ abstract class CosmoDatabase : RoomDatabase() {
                         MIGRATION_4_5,
                         MIGRATION_5_6,
                         MIGRATION_6_7,
-                        MIGRATION_7_8
+                        MIGRATION_7_8,
+                        MIGRATION_8_9
                     )
                     .build()
 
